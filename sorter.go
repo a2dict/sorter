@@ -1,27 +1,27 @@
 package sorter
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
 )
 
-type Any interface{}
-type Comparator func(a, b Any) int
-type Predicate func(a Any) bool
-type Extractor func(a Any) Any
+type Comparator func(a, b interface{}) int
+type Predicate func(a interface{}) bool
+type Extractor func(a interface{}) interface{}
 
 type sorter struct {
-	data []Any
+	data interface{}
 	cmpr Comparator
 }
 
 func (s sorter) Len() int {
-	return reflect.ValueOf(s.data).Len()
+	return reflect.ValueOf(s.data).Elem().Len()
 }
 
 func (s sorter) Less(i, j int) bool {
-	arr := reflect.ValueOf(s.data)
+	arr := reflect.ValueOf(s.data).Elem()
 	a := arr.Index(i).Interface()
 	b := arr.Index(j).Interface()
 	res := s.cmpr(a, b)
@@ -35,7 +35,7 @@ func (s sorter) Swap(i, j int) {
 	if i > j {
 		i, j = j, i
 	}
-	arr := reflect.ValueOf(s.data)
+	arr := reflect.ValueOf(s.data).Elem()
 
 	tmp := arr.Index(i).Interface()
 	arr.Index(i).Set(arr.Index(j))
@@ -49,7 +49,7 @@ func (s *sorter) Comparing(comparator Comparator) *sorter {
 	if s.cmpr == nil {
 		return &sorter{cmpr: comparator}
 	}
-	return &sorter{cmpr: func(a, b Any) int {
+	return &sorter{cmpr: func(a, b interface{}) int {
 		res := s.cmpr(a, b)
 		if res != 0 {
 			return res
@@ -70,28 +70,36 @@ func (s *sorter) ReversedComparing(comparator Comparator) *sorter {
 	return s.Comparing(comparator.flip())
 }
 
-func (s *sorter) Sort(data []Any) []Any {
+func (s *sorter) Sort(data interface{}) error {
+
+	v := reflect.ValueOf(data)
+	if v.Kind() != reflect.Ptr ||
+		v.IsNil() ||
+		v.Elem().Kind() != reflect.Slice {
+		return errors.New("data should be array pointer(*[])")
+	}
+
 	st := sorter{data: data, cmpr: s.cmpr}
 	sort.Sort(st)
-	return st.data
+	return nil
 }
 
 func (c Comparator) flip() Comparator {
-	return func(a, b Any) int {
+	return func(a, b interface{}) int {
 		return c(b, a)
 	}
 }
 
 func (e Extractor) toComparator() Comparator {
-	return func(a, b Any) int {
+	return func(a, b interface{}) int {
 		ea := e(a)
 		eb := e(b)
 		return ordering(ea, eb)
 	}
 }
 
-// data order
-func ordering(a, b Any) int {
+// prime data order
+func ordering(a, b interface{}) int {
 	if a == b {
 		return 0
 	}
