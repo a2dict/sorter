@@ -1,7 +1,6 @@
 package sorter
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -58,30 +57,37 @@ func (s *sorter) Comparing(comparator Comparator) *sorter {
 		}
 	}}
 }
-
 func (s *sorter) ComparingBy(extractor Extractor) *sorter {
 	return s.Comparing(extractor.toComparator())
+}
+func (s *sorter) ReversedComparing(comparator Comparator) *sorter {
+	return s.Comparing(comparator.flip())
 }
 func (s *sorter) ReversedComparingBy(extractor Extractor) *sorter {
 	return s.Comparing(extractor.toComparator().flip())
 }
-
-func (s *sorter) ReversedComparing(comparator Comparator) *sorter {
-	return s.Comparing(comparator.flip())
+func (s *sorter) MoveForward(predicate Predicate) *sorter {
+	return s.ComparingBy(func(a interface{}) interface{} {
+		return !predicate(a)
+	})
+}
+func (s *sorter) MoveBackward(predicate Predicate) *sorter {
+	return s.ComparingBy(func(a interface{}) interface{} {
+		return predicate(a)
+	})
 }
 
-func (s *sorter) Sort(data interface{}) error {
+func (s *sorter) Sort(data interface{}) {
 
 	v := reflect.ValueOf(data)
 	if v.Kind() != reflect.Ptr ||
 		v.IsNil() ||
 		v.Elem().Kind() != reflect.Slice {
-		return errors.New("data should be array pointer(*[])")
+		panic("data should be array pointer(*[])")
 	}
 
 	st := sorter{data: data, cmpr: s.cmpr}
 	sort.Sort(st)
-	return nil
 }
 
 func (c Comparator) flip() Comparator {
@@ -130,6 +136,8 @@ func ordering(a, b interface{}) int {
 		return lg(a.(float32) > reflect.ValueOf(b).Convert(reflect.TypeOf(a)).Interface().(float32))
 	case float64:
 		return lg(a.(float64) > reflect.ValueOf(b).Convert(reflect.TypeOf(a)).Interface().(float64))
+	case bool:
+		return lg(a.(bool) && !b.(bool))
 	default:
 		panic(fmt.Sprintf("dont know how to compare: %T", a))
 	}
