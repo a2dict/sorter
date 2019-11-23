@@ -6,8 +6,13 @@ import (
 	"sort"
 )
 
+// Comparator ...
 type Comparator func(a, b interface{}) int
+
+// Predicate ...
 type Predicate func(a interface{}) bool
+
+// Extractor ...
 type Extractor func(a interface{}) interface{}
 
 type sorter struct {
@@ -15,10 +20,12 @@ type sorter struct {
 	cmpr Comparator
 }
 
+// Len ...
 func (s sorter) Len() int {
 	return reflect.ValueOf(s.data).Elem().Len()
 }
 
+// Less ...
 func (s sorter) Less(i, j int) bool {
 	arr := reflect.ValueOf(s.data).Elem()
 	a := arr.Index(i).Interface()
@@ -30,6 +37,7 @@ func (s sorter) Less(i, j int) bool {
 	return false
 }
 
+// Swap ...
 func (s sorter) Swap(i, j int) {
 	if i > j {
 		i, j = j, i
@@ -41,9 +49,12 @@ func (s sorter) Swap(i, j int) {
 	arr.Index(j).Set(reflect.ValueOf(tmp))
 }
 
+// NewSorter ...
 func NewSorter() *sorter {
 	return &sorter{}
 }
+
+// Comparing ...
 func (s *sorter) Comparing(comparator Comparator) *sorter {
 	if s.cmpr == nil {
 		return &sorter{cmpr: comparator}
@@ -57,26 +68,37 @@ func (s *sorter) Comparing(comparator Comparator) *sorter {
 		}
 	}}
 }
+
+// ComparingBy ...
 func (s *sorter) ComparingBy(extractor Extractor) *sorter {
 	return s.Comparing(extractor.toComparator())
 }
+
+// ReversedComparing ...
 func (s *sorter) ReversedComparing(comparator Comparator) *sorter {
 	return s.Comparing(comparator.flip())
 }
+
+// ReversedComparingBy ...
 func (s *sorter) ReversedComparingBy(extractor Extractor) *sorter {
 	return s.Comparing(extractor.toComparator().flip())
 }
+
+// MoveForward ...
 func (s *sorter) MoveForward(predicate Predicate) *sorter {
 	return s.ComparingBy(func(a interface{}) interface{} {
 		return !predicate(a)
 	})
 }
+
+// MoveBackward ...
 func (s *sorter) MoveBackward(predicate Predicate) *sorter {
 	return s.ComparingBy(func(a interface{}) interface{} {
 		return predicate(a)
 	})
 }
 
+// Sort ...
 func (s *sorter) Sort(data interface{}) {
 
 	v := reflect.ValueOf(data)
